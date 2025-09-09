@@ -1,0 +1,72 @@
+name: Build and Release Images
+
+on:
+  push:
+    branches:
+      - main   # trigger on merges to main
+
+jobs:
+  build:
+    name: ${{ matrix.image.name }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      matrix:
+        image:
+          - path: images/host-fedora-41
+            name: host-fedora-41
+          - path: images/host-ubuntu-oracular
+            name: guest-ubuntu-oracular
+          - path: images/host-debian-bookworm
+            name: host-debian-bookworm
+          - path: images/host-ubuntu-plucky
+            name: host-ubuntu-plucky
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo sed -i 's/noble/plucky/g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt update
+          sudo apt install -y mkosi
+
+      - name: Build ${{ matrix.image.name }}
+        run: |
+          sudo mkosi --image-id=${{ matrix.image.name }} -C ${{ matrix.image.path }}/ cat-config
+          sudo mkosi --image-id=${{ matrix.image.name }} -C ${{ matrix.image.path }}/ summary
+          sudo mkosi --image-id=${{ matrix.image.name }} -C ${{ matrix.image.path }}/ build
+
+      - name: Upload image
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.image.name }}
+          path: ${{ matrix.image.path }}/${{ matrix.image.name }}.efi
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed for creating releases
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Nightly Build
+          body: |
+            Automated build of images from main branch.
+            Includes the following images:
+            - Fedora 41
+            - Ubuntu Oracular
+            - Debian Bookworm
+            - Ubuntu Plucky
+          files: dist/**/*.efi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
