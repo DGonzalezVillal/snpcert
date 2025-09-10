@@ -8,6 +8,11 @@ ls -l "${SRCDIR}"
 
 BEACON_DIR="${SRCDIR}/beacon"
 
-cargo build  --release --manifest-path "${BEACON_DIR}/Cargo.toml"
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+source "$HOME/.cargo/env"
 
-cp "${BEACON_DIR}/target/release/beacon" "${DESTDIR}/usr/local/bin/"
+rustup target add x86_64-unknown-linux-musl
+
+cargo build  --release --manifest-path "${BEACON_DIR}/Cargo.toml" --target=x86_64-unknown-linux-musl
+
+cp "${BEACON_DIR}/target/x86_64-unknown-linux-musl/release/beacon" "${DESTDIR}/usr/local/bin/"
