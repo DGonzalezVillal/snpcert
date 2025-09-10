@@ -1,0 +1,15 @@
+[Unit]
+Description=Enable Beacon on host
+DefaultDependencies=no
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=beacon boot
+StandardOutput=journal
+StandardError=journal
+ExecStartPost=/usr/bin/touch /run/enable-beacon.ok
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eux
+
+# Create destination dir inside the image root
+mkdir -p "${DESTDIR}/usr/local/bin"
+
+ls -l "${SRCDIR}"
+
+BEACON_DIR="${SRCDIR}/beacon"
+
+cargo build  --release --manifest-path "${BEACON_DIR}/Cargo.toml"
+
+cp "${BEACON_DIR}/target/release/beacon" "${DESTDIR}/usr/local/bin/"
