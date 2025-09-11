@@ -1,8 +1,9 @@
 [Unit]
 Description=Enable Beacon on host
 DefaultDependencies=no
-After=network-online.target
+After=network-online.target avahi-daemon.service
 Wants=network-online.target
+Requires=avahi-daemon.service
 
 [Service]
 Type=simple
