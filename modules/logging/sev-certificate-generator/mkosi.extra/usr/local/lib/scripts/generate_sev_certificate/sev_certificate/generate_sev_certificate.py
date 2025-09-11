@@ -18,6 +18,6 @@ sev_report += sev_report_v2.generate_sev_certificate()
 # Print SEV Certificate into the console
 print(sev_report)
 
-# Share SEV Certificate into the pastebin service(fpaste)
-sev_report_v2.publish_sev_certificate(sev_report)
+# Write certificate to file
+sev_report_v2.write_sev_certificate(sev_report, "~/sev_certificate.txt")
 

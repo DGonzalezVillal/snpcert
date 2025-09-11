@@ -1,0 +1,14 @@
+[Unit]
+Description=Publish SEV certificate using beacon
+DefaultDependencies=no
+After=sev-certificate-generator.service
+Wants=sev-certificate-generator.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/scripts/publish-certificate.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
