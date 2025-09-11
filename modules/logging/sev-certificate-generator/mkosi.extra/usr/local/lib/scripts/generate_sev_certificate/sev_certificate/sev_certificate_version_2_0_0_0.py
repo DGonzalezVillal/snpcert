@@ -168,8 +168,14 @@ class SEV_Certificate:
         sev_log = command.stdout
         return sev_log
 
-    def write_sev_certificate(self, certificate_content, output_file="sev_certificate.txt"):
+    def write_sev_certificate(self, certificate_content,  output_file="~/sev_certificate.txt"):
         """Save the generated SEV Certificate to a text file."""
+
+        # Expand ~ to the home directory
+        output_file = os.path.expanduser(output_file)
+
+        # Ensure the parent directory exists
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
         with open(output_file, "w") as f:
             f.write(certificate_content)

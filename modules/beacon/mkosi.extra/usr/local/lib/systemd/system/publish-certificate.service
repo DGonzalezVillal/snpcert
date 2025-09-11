@@ -3,6 +3,7 @@ Description=Publish SEV certificate using beacon
 DefaultDependencies=no
 After=sev-certificate-generator.service
 Wants=sev-certificate-generator.service
+Requires=enable-beacon.service
 
 [Service]
 Type=oneshot

@@ -1,14 +1,13 @@
 #!/usr/bin/bash
 set -euo pipefail
 
-CERT_FILE="$HOME/sev_certificate.txt"
+CERT_FILE="${HOME:-/root}/sev_certificate.txt"
 
 # Determine OS name and version
 if [ -f /etc/os-release ]; then
-    # shellcheck disable=SC1091
     . /etc/os-release
-    OS_NAME="${ID}"            # e.g., ubuntu, rhel, fedora
-    OS_VERSION="${VERSION_ID}" # e.g., 22.04, 9.2
+    OS_NAME="${ID}"            
+    OS_VERSION="${VERSION_ID}" 
 else
     OS_NAME="$(uname -s)"
     OS_VERSION=""
@@ -25,6 +24,6 @@ else
 fi
 
 # Call beacon
-beacon --title "$TITLE" --body "$CERT_FILE"
+beacon report --title "$TITLE" --body "$CERT_FILE"
 
 echo "Published SEV certificate via beacon with title: $TITLE"
