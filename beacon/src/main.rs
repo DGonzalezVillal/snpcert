@@ -133,38 +133,117 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let connection = Connection::system().await?;
     let avahi = Avahi::new(&connection).await?;
 
+    eprintln!("[DEBUG] Browsing for _dispatch._tcp services...");
     let mut browsing = avahi.browse(-1, -1, "_dispatch._tcp", "local", 0).await?;
     while let Ok(Some(item)) = timeout(BROWSER_TIMEOUT, browsing.next()).await {
-        let mut resolving = avahi.resolve(item).await?;
+        eprintln!("[DEBUG] Browsing got item: {:?}", item);
+
+        let mut resolving = avahi.resolve(item.clone()).await?;
+        eprintln!("[DEBUG] Starting resolver for {:?}", item);
 
         let action = action.clone();
         tokio::spawn(async move {
-            while let Ok(Some(resolved)) = timeout(RESOLVER_TIMEOUT, resolving.next()).await {
-                // Ignore link-local addresses. While these are theoretically
-                // possible, they are unlikely. Supporting them means we have
-                // to resolve an interface since naked link-local addresses
-                // aren't permitted without an interface qualifier.
-                match resolved.address.ip() {
-                    addr if addr.is_loopback() => continue,
-                    IpAddr::V4(ipv4) if ipv4.is_link_local() => continue,
-                    IpAddr::V6(ipv6) if ipv6.is_unicast_link_local() => continue,
-                    _ => {}
-                }
+            loop {
+                match timeout(RESOLVER_TIMEOUT, resolving.next()).await {
+                    Ok(Some(resolved)) => {
+                        eprintln!("[DEBUG] Resolved: {:?}", resolved);
 
-                // Construct the URL
-                let url = match resolved.txt.get("path") {
-                    Some(path) => format!("http://{}{}", resolved.address, path),
-                    None => continue,
-                };
+                        // --- Step 4: address filtering
+                        match resolved.address.ip() {
+                            addr if addr.is_loopback() => {
+                                eprintln!("[DEBUG] Skipping loopback {:?}", addr);
+                                continue;
+                            }
+                            IpAddr::V4(ipv4) if ipv4.is_link_local() => {
+                                eprintln!("[DEBUG] Skipping v4 link-local {:?}", ipv4);
+                                continue;
+                            }
+                            IpAddr::V6(ipv6) if ipv6.is_unicast_link_local() => {
+                                eprintln!("[DEBUG] Skipping v6 link-local {:?}", ipv6);
+                                continue;
+                            }
+                            _ => {}
+                        }
 
-                match action.perform(&url).await {
-                    Ok(true) => std::process::exit(0),
-                    Ok(false) => continue,
-                    Err(e) => eprintln!("error: {}: {}", url, e),
+                        // --- Step 5: TXT record check
+                        eprintln!("[DEBUG] TXT records: {:?}", resolved.txt);
+                        let url = match resolved.txt.get("path") {
+                            Some(path) => format!("http://{}{}", resolved.address, path),
+                            None => {
+                                eprintln!("[DEBUG] No 'path' TXT entry, skipping {:?}", resolved);
+                                continue;
+                            }
+                        };
+
+                        // --- Step 6: action
+                        eprintln!("[DEBUG] Trying URL {}", url);
+                        match action.perform(&url).await {
+                            Ok(true) => {
+                                eprintln!("[DEBUG] Action succeeded with URL {}", url);
+                                std::process::exit(0)
+                            }
+                            Ok(false) => {
+                                eprintln!("[DEBUG] Action failed with URL {}, trying next", url);
+                                continue;
+                            }
+                            Err(e) => eprintln!("[ERROR] {}: {}", url, e),
+                        }
+                    }
+                    Ok(None) => {
+                        eprintln!("[DEBUG] Resolver finished with no result");
+                        break;
+                    }
+
+                    Err(_) => {
+                        eprintln!("[DEBUG] Resolver timed out after {:?}", RESOLVER_TIMEOUT);
+                        break;
+                    }
                 }
             }
         });
+        // eprintln!("[DEBUG] Browsing got item: {:?}", item);
+
+        // let mut resolving = avahi.resolve(item.clone()).await?;
+        // eprintln!("[DEBUG] Starting resolver for {:?}", item);
+
+        // let action = action.clone();
+        // tokio::spawn(async move {
+        //     while let Ok(Some(resolved)) = timeout(RESOLVER_TIMEOUT, resolving.next()).await {
+        //         // Ignore link-local addresses. While these are theoretically
+        //         // possible, they are unlikely. Supporting them means we have
+        //         // to resolve an interface since naked link-local addresses
+        //         // aren't permitted without an interface qualifier.
+        //         match resolved.address.ip() {
+        //             addr if addr.is_loopback() => continue,
+        //             IpAddr::V4(ipv4) if ipv4.is_link_local() => continue,
+        //             IpAddr::V6(ipv6) if ipv6.is_unicast_link_local() => continue,
+        //             _ => {}
+        //         }
+
+        //         // Construct the URL
+        //         eprintln!("[DEBUG] TXT records: {:?}", resolved.txt);
+        //         let url = match resolved.txt.get("path") {
+        //             Some(path) => format!("http://{}{}", resolved.address, path),
+        //             None => continue,
+        //         };
+
+        //         eprintln!("[DEBUG] Trying URL {}", url);
+        //         match action.perform(&url).await {
+        //             Ok(true) => {
+        //                 eprintln!("[DEBUG] Action succeeded with URL {}", url);
+        //                 std::process::exit(0)
+        //             }
+        //             Ok(false) => {
+        //                 eprintln!("[DEBUG] Action failed with URL {}, trying next", url);
+        //                 continue;
+        //             }
+
+        //             Err(e) => eprintln!("error: {}: {}", url, e),
+        //         }
+        //     }
+        // });
     }
 
+    eprintln!("[DEBUG] Browsing timed out after {:?}", BROWSER_TIMEOUT);
     Err("no dispatch services found".into())
 }
