@@ -142,68 +142,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("[DEBUG] Starting resolver for {:?}", item);
 
         let action = action.clone();
-        tokio::spawn(async move {
-            loop {
-                match timeout(RESOLVER_TIMEOUT, resolving.next()).await {
-                    Ok(Some(resolved)) => {
-                        eprintln!("[DEBUG] Resolved: {:?}", resolved);
+        // tokio::spawn(async move {
+        loop {
+            match timeout(RESOLVER_TIMEOUT, resolving.next()).await {
+                Ok(Some(resolved)) => {
+                    eprintln!("[DEBUG] Resolved: {:?}", resolved);
 
-                        // --- Step 4: address filtering
-                        match resolved.address.ip() {
-                            addr if addr.is_loopback() => {
-                                eprintln!("[DEBUG] Skipping loopback {:?}", addr);
-                                continue;
-                            }
-                            IpAddr::V4(ipv4) if ipv4.is_link_local() => {
-                                eprintln!("[DEBUG] Skipping v4 link-local {:?}", ipv4);
-                                continue;
-                            }
-                            IpAddr::V6(ipv6) if ipv6.is_unicast_link_local() => {
-                                eprintln!("[DEBUG] Skipping v6 link-local {:?}", ipv6);
-                                continue;
-                            }
-                            _ => {}
+                    // --- Step 4: address filtering
+                    match resolved.address.ip() {
+                        addr if addr.is_loopback() => {
+                            eprintln!("[DEBUG] Skipping loopback {:?}", addr);
+                            continue;
                         }
-
-                        // --- Step 5: TXT record check
-                        eprintln!("[DEBUG] TXT records: {:?}", resolved.txt);
-                        let url = match resolved.txt.get("path") {
-                            Some(path) => format!("http://{}{}", resolved.address, path),
-                            None => {
-                                eprintln!("[DEBUG] No 'path' TXT entry, skipping {:?}", resolved);
-                                continue;
-                            }
-                        };
-
-                        // --- Step 6: action
-                        eprintln!("[DEBUG] Trying URL {}", url);
-                        match action.perform(&url).await {
-                            Ok(true) => {
-                                eprintln!("[DEBUG] Action succeeded with URL {}", url);
-                                std::process::exit(0)
-                            }
-                            Ok(false) => {
-                                eprintln!("[DEBUG] Action failed with URL {}, trying next", url);
-                                continue;
-                            }
-                            Err(e) => eprintln!("[ERROR] {}: {}", url, e),
+                        IpAddr::V4(ipv4) if ipv4.is_link_local() => {
+                            eprintln!("[DEBUG] Skipping v4 link-local {:?}", ipv4);
+                            continue;
                         }
-                    }
-                    Ok(None) => {
-                        eprintln!("[DEBUG] Resolver finished with no result");
-                        break;
+                        IpAddr::V6(ipv6) if ipv6.is_unicast_link_local() => {
+                            eprintln!("[DEBUG] Skipping v6 link-local {:?}", ipv6);
+                            continue;
+                        }
+                        _ => {}
                     }
 
-                    Err(e) => {
-                        eprintln!(
-                            "[DEBUG] Resolver timed out after {:?} (error: {:?})",
-                            RESOLVER_TIMEOUT, e
-                        );
-                        break;
+                    // --- Step 5: TXT record check
+                    eprintln!("[DEBUG] TXT records: {:?}", resolved.txt);
+                    let url = match resolved.txt.get("path") {
+                        Some(path) => format!("http://{}{}", resolved.address, path),
+                        None => {
+                            eprintln!("[DEBUG] No 'path' TXT entry, skipping {:?}", resolved);
+                            continue;
+                        }
+                    };
+
+                    // --- Step 6: action
+                    eprintln!("[DEBUG] Trying URL {}", url);
+                    match action.perform(&url).await {
+                        Ok(true) => {
+                            eprintln!("[DEBUG] Action succeeded with URL {}", url);
+                            std::process::exit(0)
+                        }
+                        Ok(false) => {
+                            eprintln!("[DEBUG] Action failed with URL {}, trying next", url);
+                            continue;
+                        }
+                        Err(e) => eprintln!("[ERROR] {}: {}", url, e),
                     }
                 }
+                Ok(None) => {
+                    eprintln!("[DEBUG] Resolver finished with no result");
+                    break;
+                }
+
+                Err(e) => {
+                    eprintln!(
+                        "[DEBUG] Resolver timed out after {:?} (error: {:?})",
+                        RESOLVER_TIMEOUT, e
+                    );
+                    break;
+                }
             }
-        });
+        }
+        // });
         // eprintln!("[DEBUG] Browsing got item: {:?}", item);
 
         // let mut resolving = avahi.resolve(item.clone()).await?;
