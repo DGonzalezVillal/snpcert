@@ -114,8 +114,8 @@ pub struct Report {
     assignees: Vec<String>,
 }
 
-const RESOLVER_TIMEOUT: Duration = Duration::from_secs(5);
-const BROWSER_TIMEOUT: Duration = Duration::from_secs(10);
+const RESOLVER_TIMEOUT: Duration = Duration::from_secs(60);
+const BROWSER_TIMEOUT: Duration = Duration::from_secs(120);
 
 // Avahi D-Bus proxy interfaces
 #[tokio::main]
@@ -194,8 +194,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         break;
                     }
 
-                    Err(_) => {
-                        eprintln!("[DEBUG] Resolver timed out after {:?}", RESOLVER_TIMEOUT);
+                    Err(e) => {
+                        eprintln!(
+                            "[DEBUG] Resolver timed out after {:?} (error: {:?})",
+                            RESOLVER_TIMEOUT, e
+                        );
                         break;
                     }
                 }
