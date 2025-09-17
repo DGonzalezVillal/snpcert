@@ -5,6 +5,8 @@ mod types;
 
 use zbus::Connection;
 
+use crate::avahi::resolving::Resolved;
+
 #[derive(Clone)]
 pub struct Avahi<'a>(&'a Connection, types::ServerProxy<'a>);
 
@@ -34,13 +36,10 @@ impl<'a> Avahi<'a> {
         Ok(browsing::Browsing(proxy.receive_item_new().await?))
     }
 
-    pub async fn resolve(
-        &self,
-        service: browsing::Service,
-    ) -> Result<resolving::Resolving, zbus::Error> {
-        let path = self
+    pub async fn resolve(&self, service: browsing::Service) -> Result<Resolved, zbus::Error> {
+        let values = self
             .1
-            .service_resolver_new(
+            .resolve_service(
                 service.interface,
                 service.protocol,
                 &service.name,
@@ -51,11 +50,8 @@ impl<'a> Avahi<'a> {
             )
             .await?;
 
-        let proxy = types::ServiceResolverProxy::builder(self.0)
-            .path(path)?
-            .build()
-            .await?;
-
-        Ok(resolving::Resolving(proxy.receive_found().await?))
+        values
+            .try_into()
+            .map_err(|e| zbus::Error::Failure(format!("Resolving failed: {e}")))
     }
 }

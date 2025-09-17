@@ -135,15 +135,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut browsing = avahi.browse(-1, -1, "_dispatch._tcp", "local", 0).await?;
     while let Ok(Some(item)) = timeout(BROWSER_TIMEOUT, browsing.next()).await {
-        let mut resolving = avahi.resolve(item).await?;
+        let resolved = timeout(RESOLVER_TIMEOUT, avahi.resolve(item)).await?;
 
-        let action = action.clone();
-        tokio::spawn(async move {
-            while let Ok(Some(resolved)) = timeout(RESOLVER_TIMEOUT, resolving.next()).await {
-                // Ignore link-local addresses. While these are theoretically
-                // possible, they are unlikely. Supporting them means we have
-                // to resolve an interface since naked link-local addresses
-                // aren't permitted without an interface qualifier.
+        match resolved {
+            Ok(resolved) => {
                 match resolved.address.ip() {
                     addr if addr.is_loopback() => continue,
                     IpAddr::V4(ipv4) if ipv4.is_link_local() => continue,
@@ -156,14 +151,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Some(path) => format!("http://{}{}", resolved.address, path),
                     None => continue,
                 };
-
                 match action.perform(&url).await {
                     Ok(true) => std::process::exit(0),
                     Ok(false) => continue,
+
                     Err(e) => eprintln!("error: {}: {}", url, e),
                 }
             }
-        });
+            Err(e) => eprintln!("Warning: Resolve failed: {e}"),
+        }
     }
 
     Err("no dispatch services found".into())

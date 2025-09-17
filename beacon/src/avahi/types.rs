@@ -15,18 +15,29 @@ pub trait Server {
         flags: u32,
     ) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
 
-    /// Create a new service resolver  
     #[allow(clippy::too_many_arguments)]
-    fn service_resolver_new(
+    fn resolve_service(
         &self,
         interface: i32,
         protocol: i32,
         name: &str,
         service_type: &str,
         domain: &str,
-        aprotocol: i32,
+        aprotocol: i32, // -1 for any, 0 for IPv4, 1 for IPv6
         flags: u32,
-    ) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
+    ) -> zbus::Result<(
+        i32,          // interface
+        i32,          // protocol
+        String,       // name
+        String,       // type
+        String,       // domain
+        String,       // host
+        i32,          // aprotocol
+        String,       // address
+        u16,          // port
+        Vec<Vec<u8>>, // txt
+        u32,          // flags
+    )>;
 }
 
 /// Service browser proxy for receiving service discovery notifications
