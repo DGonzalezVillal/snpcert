@@ -168,15 +168,19 @@ class SEV_Certificate:
         sev_log = command.stdout
         return sev_log
 
-    def publish_sev_certificate(self, fpaste_content):
-        """Share the generated SEV Certificate using the fpaste pastebin service"""
+    def write_sev_certificate(self, certificate_content,  output_file="~/sev_certificate.txt"):
+        """Save the generated SEV Certificate to a text file."""
 
-        fpaste_command = subprocess.run(['fpaste'], input=fpaste_content, capture_output=True , text=True, check=True)
-        fpaste_output = fpaste_command.stdout.strip()
-        fpaste_lines = fpaste_output.split('\n')
+        # Expand ~ to the home directory
+        output_file = os.path.expanduser(output_file)
 
-        fpaste_url = fpaste_lines[-1] if fpaste_lines else None
-        print(f"SEV version {self.sev_version} Certificate is posted at: \n {fpaste_url} ")
+        # Ensure the parent directory exists
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+        with open(output_file, "w") as f:
+            f.write(certificate_content)
+
+        print(f"SEV version {self.sev_version} Certificate saved to: {output_file}")
 
     def generate_sev_certificate(self):
         """ Generate the SEV Certificate content """
