@@ -9,7 +9,7 @@ INTERVAL=1
 ELAPSED=0
 
 while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    if journalctl -D ${BOOT_LOG_DIR} | grep -q "boot-successful"; then
+    if journalctl -D "${BOOT_LOG_DIR}" 2>/dev/null | grep -q "boot-successful"; then
         echo "Guest boot successful."
         exit 0
     fi
