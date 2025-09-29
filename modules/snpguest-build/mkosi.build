@@ -1,11 +1,11 @@
 #!/bin/bash
-set -eux
+set -euo pipefail
+set -x
 
 # Fetch latest release tag from GitHub API
 LATEST_TAG=$(curl -s https://api.github.com/repos/virtee/snpguest/releases/latest \
-  | grep -oP '"tag_name": "\K(.*)(?=")')
+  | jq -r '.tag_name')
 
 # Download and install into DESTDIR with correct permissions
-curl -L "https://github.com/virtee/snpguest/releases/download/${LATEST_TAG}/snpguest" \
+curl -fsSL "https://github.com/virtee/snpguest/releases/download/${LATEST_TAG}/snpguest" \
   | install -D -m 0755 /dev/stdin "${DESTDIR}/usr/local/bin/snpguest"
-  
