@@ -1,5 +1,11 @@
 name: build-images
 on:
+  workflow_dispatch:
+    inputs:
+      replace_release:
+        description: 'Replace existing development assets (if any)'
+        required: false
+        type: boolean
   pull_request:
   push:  
     branches: 
@@ -12,7 +18,7 @@ jobs:
   create-release:
     name: create new release for tagged or latest assets
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.replace_release == 'true')
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -21,7 +27,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          if [[ "${GITHUB_REF}" == "refs/heads/main" || "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             TAG="devel"
             gh release delete "${TAG}" --cleanup-tag --yes || true
             while git fetch --tags --prune-tags; git tag -l | grep ${TAG}; do
@@ -87,10 +93,10 @@ jobs:
           cp images/host-${{ matrix.distro }}-${{ matrix.release }}/host-${{ matrix.distro }}-${{ matrix.release }}.efi /tmp/release-artifacts/host-${{ matrix.distro }}-${{ matrix.release }}.efi
       
       - name: Upload guest assets (default content type)
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.replace_release == 'true')
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          if [[ "${GITHUB_REF}" == "refs/heads/main" || "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             TAG="devel"
           elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
@@ -101,10 +107,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Upload host assets (custom Content-Type)
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.replace_release == 'true')
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          if [[ "${GITHUB_REF}" == "refs/heads/main" || "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             TAG="devel"
           elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
