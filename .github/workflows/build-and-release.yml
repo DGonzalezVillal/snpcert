@@ -23,14 +23,18 @@ jobs:
         run: |
           if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
             TAG="devel"
+            gh release delete "${TAG}" --cleanup-tag --yes || true
+            gh release create "${TAG}" \
+              --title "Development Images" \
+              --notes "Automated build of host and guest images from main branch." \
+              --prerelease
           elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
+            gh release delete "${TAG}" --cleanup-tag --yes || true
+            gh release create "${TAG}" \
+              --title "SEV Certify ${TAG} images" \
+              --notes "OS images for ${TAG} certification"
           fi
-          gh release delete "${TAG}" --cleanup-tag --yes || true
-          gh release create "${TAG}" \
-            --title "Development Images" \
-            --notes "Automated build of host and guest images from main branch." \
-            --prerelease
 
   build:
     name: ${{ matrix.distro }}-${{ matrix.release }}
