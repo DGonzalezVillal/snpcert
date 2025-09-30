@@ -1,5 +1,6 @@
 [Unit]
 Description=Prompt user to login or reboot after tests
+Wants=Beacon-report.service
 After=beacon-report.service
 
 [Service]
